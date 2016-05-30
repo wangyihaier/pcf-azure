@@ -1,0 +1,76 @@
+compilation:
+  cloud_properties:
+    instance_type: Standard_D1_v2
+  network: default
+  reuse_compilation_vms: true
+  workers: 1
+director_uuid: 084ab4fd-7adc-4c8d-8bbe-61ec4a0e5abd
+jobs:
+- instances: 1
+  memory_mb: 2048
+  name: datadog-firehose-nozzle
+  networks:
+  - name: default
+  resource_pool: datadog-firehose-nozzle
+  templates:
+  - name: datadog-firehose-nozzle
+    release: datadog-firehose-nozzle
+meta:
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: 3169
+name: datadog-firehose-nozzle-gt
+networks:
+- name: default
+  subnets:
+  - cloud_properties:
+      subnet_name: CloudFoundry
+      virtual_network_name: boshvnet-crp
+    dns:
+    - 8.8.8.8
+    gateway: 10.0.16.1
+#    name: default_unused
+    range: 10.0.16.0/24
+    reserved:
+    - 10.0.16.2-10.0.16.220
+    static:
+    - 10.0.16.221 - 10.0.16.230
+properties:
+  datadog:
+# GT datadog subscription info
+#    api_key: 94d0cd8b2d8ec64e96474e321273b88c
+#    api_url: https://app.datadoghq.com/api/v1/series
+
+# Merrill datadog subscription info
+    api_key: bc4444dfa2245c5ced97336cfb2f6699
+    api_url: https://app.datadoghq.com/api/v1/series
+
+    flush_duration_seconds: 15
+    metric_prefix: datadog.nozzle.
+  loggregator:
+    traffic_controller_url: wss://doppler.sys.javelinmc.com:4443
+  nozzle:
+    deployment: cf-deployment
+    insecure_ssl_skip_verify: true
+    subscription_id: datadog-nozzle
+  uaa:
+    password: 27338d36318523ecbb8dcbde5c3151aec349e362
+    url: https://uaa.sys.javelinmc.com 
+    username: datadog-firehose-nozzle
+releases:
+- name: datadog-firehose-nozzle
+  version: 7
+resource_pools:
+- cloud_properties:
+    instance_type: Standard_D1_v2
+  name: datadog-firehose-nozzle
+  network: default
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: 3169
+update:
+  canaries: 1
+  canary_watch_time: 30000-100000
+  max_errors: 1
+  max_in_flight: 1
+  update_watch_time: 30000-100000

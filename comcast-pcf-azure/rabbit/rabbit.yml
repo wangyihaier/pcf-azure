@@ -1,0 +1,328 @@
+---
+name: p-rabbitmq-a704338f32f62367d521
+director_uuid: 084ab4fd-7adc-4c8d-8bbe-61ec4a0e5abd
+releases:
+- name: cf-rabbitmq
+  version: '210.4.0'
+networks:
+- name: default
+  subnets:
+  - range: 10.0.16.0/24
+    gateway: 10.0.16.1
+    dns:
+    - 8.8.8.8
+    static:
+    - 10.0.16.97
+    - 10.0.16.98
+    - 10.0.16.99
+    - 10.0.16.100
+    - 10.0.16.101
+    reserved:
+    - 10.0.16.2-10.0.16.96
+    - 10.0.16.118-10.0.16.254
+    cloud_properties:
+      virtual_network_name: boshvnet-crp
+      subnet_name: CloudFoundry
+resource_pools:
+- name: rabbitmq-server-partition-1c6efcca246e5496b1bd
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D3_v2
+    storage_account_name: merrillrabbitstore
+    storage_access_key: Qoa/qGWLKcv/TvNOfHtjLn4ZDanR8dLzRvOqzAXgUmVJ+2KhpbCnXuiUlsJchG6/hSMqz4Shi2y7iRNS3igvxg==
+  env:
+    bosh:
+      password: "$6$5ec30377ab294374$IVfUYCYKOEFpxZISD.BYV0qMLomtZb4K31tTLX3Gi8I.Ipice6wG4PF3ad79y9Shvt4FmVykV3A1cBp13cAaY."
+- name: rabbitmq-haproxy-partition-1c6efcca246e5496b1bd
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_v2
+    storage_account_name: merrillrabbitstore
+    storage_access_key: Qoa/qGWLKcv/TvNOfHtjLn4ZDanR8dLzRvOqzAXgUmVJ+2KhpbCnXuiUlsJchG6/hSMqz4Shi2y7iRNS3igvxg==
+  env:
+    bosh:
+      password: "$6$5ec30377ab294374$IVfUYCYKOEFpxZISD.BYV0qMLomtZb4K31tTLX3Gi8I.Ipice6wG4PF3ad79y9Shvt4FmVykV3A1cBp13cAaY."
+- name: rabbitmq-broker-partition-1c6efcca246e5496b1bd
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_v2
+    storage_account_name: merrillrabbitstore
+    storage_access_key: Qoa/qGWLKcv/TvNOfHtjLn4ZDanR8dLzRvOqzAXgUmVJ+2KhpbCnXuiUlsJchG6/hSMqz4Shi2y7iRNS3igvxg==
+  env:
+    bosh:
+      password: "$6$5ec30377ab294374$IVfUYCYKOEFpxZISD.BYV0qMLomtZb4K31tTLX3Gi8I.Ipice6wG4PF3ad79y9Shvt4FmVykV3A1cBp13cAaY."
+
+- name: broker-registrar
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D2_v2
+    storage_account_name: merrillrabbitstore
+    storage_access_key: Qoa/qGWLKcv/TvNOfHtjLn4ZDanR8dLzRvOqzAXgUmVJ+2KhpbCnXuiUlsJchG6/hSMqz4Shi2y7iRNS3igvxg==
+  env:
+    bosh:
+      password: "$6$5ec30377ab294374$IVfUYCYKOEFpxZISD.BYV0qMLomtZb4K31tTLX3Gi8I.Ipice6wG4PF3ad79y9Shvt4FmVykV3A1cBp13cAaY."
+
+- name: broker-deregistrar
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D2_v2
+    storage_account_name: merrillrabbitstore
+    storage_access_key: Qoa/qGWLKcv/TvNOfHtjLn4ZDanR8dLzRvOqzAXgUmVJ+2KhpbCnXuiUlsJchG6/hSMqz4Shi2y7iRNS3igvxg==
+  env:
+    bosh:
+      password: "$6$5ec30377ab294374$IVfUYCYKOEFpxZISD.BYV0qMLomtZb4K31tTLX3Gi8I.Ipice6wG4PF3ad79y9Shvt4FmVykV3A1cBp13cAaY."
+
+
+compilation:
+  reuse_compilation_vms: true
+  workers: 24
+  network: default
+  cloud_properties:
+    instance_type: Standard_D2_v2
+    storage_account_name: merrillrabbitstore
+    storage_access_key: Qoa/qGWLKcv/TvNOfHtjLn4ZDanR8dLzRvOqzAXgUmVJ+2KhpbCnXuiUlsJchG6/hSMqz4Shi2y7iRNS3igvxg==
+
+update:
+  canaries: 1
+  canary_watch_time: 30000-300000
+  update_watch_time: 30000-300000
+  max_in_flight: 1
+  max_errors: 2
+  serial: true
+jobs:
+- name: rabbitmq-server-partition-1c6efcca246e5496b1bd
+  templates:
+  - name: rabbitmq-server
+    release: cf-rabbitmq
+  lifecycle: service
+  instances: 3
+  resource_pool: rabbitmq-server-partition-1c6efcca246e5496b1bd
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+    static_ips:
+    - 10.0.16.97
+    - 10.0.16.100
+    - 10.0.16.101
+  properties:
+    syslog_aggregator:
+      address:
+      port:
+    rabbitmq-server:
+      networks:
+        apps: default
+      static_ips:
+      - 10.0.16.97
+      - 10.0.16.100
+      - 10.0.16.101
+      administrators:
+        management:
+          username: admin
+          password: password
+        broker:
+          username: broker
+          password: 7560978cf2f5b46f
+      plugins:
+      - rabbitmq_amqp1_0
+      - rabbitmq_auth_backend_ldap
+      - rabbitmq_auth_mechanism_ssl
+      - rabbitmq_consistent_hash_exchange
+      - rabbitmq_federation
+      - rabbitmq_federation_management
+      - rabbitmq_jsonrpc_channel
+      - rabbitmq_jsonrpc_channel_examples
+      - rabbitmq_management
+      - rabbitmq_management_visualiser
+      - rabbitmq_mqtt
+      - rabbitmq_shovel
+      - rabbitmq_shovel_management
+      - rabbitmq_stomp
+      - rabbitmq_tracing
+      - rabbitmq_web_stomp
+      - rabbitmq_web_stomp_examples
+      ssl:
+        security_options:
+        key:
+        cert:
+        cacert:
+      config:
+      cookie:
+  update:
+    max_in_flight: 1
+    serial: false
+  persistent_disk_pool: rabbitmq-server-partition-1c6efcca246e5496b1bd
+- name: rabbitmq-haproxy-partition-1c6efcca246e5496b1bd
+  templates:
+  - name: rabbitmq-haproxy
+    release: cf-rabbitmq
+  lifecycle: service
+  instances: 1
+  resource_pool: rabbitmq-haproxy-partition-1c6efcca246e5496b1bd
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+    static_ips:
+    - 10.0.16.98
+  properties:
+    rabbitmq-haproxy:
+      stats:
+        username: admin
+        password: d6362b86df1596d0
+      networks:
+        apps: default
+      server_ips:
+      - 10.0.16.97
+      - 10.0.16.100
+      - 10.0.16.101
+      ports: 15672, 5672, 5671, 1883, 8883, 61613, 61614, 15674
+  update:
+    max_in_flight: 1
+    serial: false
+- name: rabbitmq-broker-partition-1c6efcca246e5496b1bd
+  templates:
+  - name: rabbitmq-broker
+    release: cf-rabbitmq
+  lifecycle: service
+  instances: 1
+  resource_pool: rabbitmq-broker-partition-1c6efcca246e5496b1bd
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+    static_ips:
+    - 10.0.16.99
+  properties:
+    rabbitmq-broker:
+      ip: 10.0.16.99
+      networks:
+        apps: default
+      cc_endpoint: https://api.sys.MY_DOMAIN.COM
+      cc_api_version: v2
+      uaa_endpoint: https://uaa.sys.MY_DOMAIN.COM
+      uaa_client:
+        client_id: cf
+        username: system_services
+        password: c4b2831fd0bfa589b8a7
+      rabbitmq:
+        operator_set_policy:
+          enabled: true
+          policy_name: operator_set_policy
+          policy_definition: |
+            {"ha-mode": "exactly", "ha-params": 2, "ha-sync-mode": "automatic"}
+          policy_priority: 50
+        management_domain: pivotal-rabbitmq.sys.MY_DOMAIN.COM
+        management_ip: "10.0.16.98"
+        hosts:
+        - 10.0.16.98
+        dns_host:
+        administrator:
+          username: broker
+          password: 7560978cf2f5b46f
+        ssl:
+      service:
+        url: 10.0.16.99
+        username: admin
+        password: d434238c7f2c277e7154
+      logging:
+        level: info
+        print_stack_traces: true
+    cf:
+      api_url: https://api.sys.MY_DOMAIN.COM
+      domain: sys.MY_DOMAIN.COM
+      admin_username: admin
+      admin_password: a3354e5e081744fc0525
+      nats:
+        username: nats
+        password: a79ffab7e326047f84cb
+        host: 10.0.16.6
+        port: 4222
+        machines:
+        - 10.0.16.6
+        - 10.0.16.41
+    route-registrar:
+      target_ip: 10.0.16.98
+  update:
+    max_in_flight: 1
+    serial: false
+- name: broker-registrar
+  templates:
+  - name: broker-registrar
+    release: cf-rabbitmq
+  lifecycle: errand
+  instances: 1
+  resource_pool: broker-registrar
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+  properties:
+    broker:
+      name: p-rabbitmq
+      protocol: http
+      host: 10.0.16.99
+      port: 4567
+      username: admin
+      password: d434238c7f2c277e7154
+    cf:
+      api_url: https://api.sys.MY_DOMAIN.COM
+      admin_username: admin
+      admin_password: a3354e5e081744fc0525
+  update:
+    max_in_flight: 1
+- name: broker-deregistrar
+  templates:
+  - name: broker-deregistrar
+    release: cf-rabbitmq
+  lifecycle: errand
+  instances: 1
+  resource_pool: broker-deregistrar
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+  properties:
+    broker:
+      name: p-rabbitmq
+      protocol: http
+      host: 10.0.16.99
+      port: 4567
+      username: admin
+      password: d434238c7f2c277e7154
+    cf:
+      api_url: https://api.sys.MY_DOMAIN.COM
+      admin_username: admin
+      admin_password: a3354e5e081744fc0525
+  update:
+    max_in_flight: 1
+properties:
+  # for broker and route registrars
+  cf:
+    api_url: https://api.sys.MY_DOMAIN.COM
+    domain: sys.MY_DOMAIN.COM
+    admin_username: admin
+    admin_password: a3354e5e081744fc0525
+disk_pools:
+- name: rabbitmq-server-partition-1c6efcca246e5496b1bd
+  disk_size: 20000

@@ -1,0 +1,289 @@
+---
+name: p-rabbitmq-605344f54aaf05054371
+director_uuid: ad01a750-504c-4e13-9557-960d2a013691
+releases:
+- name: cf-rabbitmq
+  version: 210.4.0
+networks:
+- name: default
+  subnets:
+  - range: 10.0.16.0/20
+    gateway: 10.0.16.1
+    dns:
+    - 10.0.0.2
+    static:
+    - 10.0.16.20
+    - 10.0.16.128
+    - 10.0.16.23
+    - 10.0.16.64
+    reserved:
+    - 10.0.16.2-10.0.16.19
+    - 10.0.16.21-10.0.16.22
+    - 10.0.16.24-10.0.16.63
+    - 10.0.16.67-10.0.16.85
+    - 10.0.16.91-10.0.16.127
+    - 10.0.16.130-10.0.31.254
+    cloud_properties:
+      virtual_network_name: boshvnet-crp # <--- Replace with virtual network name
+      subnet_name: CloudFoundry # <--- Replace with subnet name for cloud foundry VMs
+resource_pools:
+- name: rabbitmq-server-partition-e4fffe2eeec37a9cd821
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: latest
+  network: default
+  cloud_properties:
+    instance_type: Standard_D2_V2
+    ephemeral_disk:
+      size: 33792
+  env:
+    bosh:
+      password: "$6$26b92a5c5b2ea94f$h6tP2fYzUJ2tJUHXB7h0KjyXvodf/OORr.C/Jt6FbkHALf7tA1bcsz1aOFNPQ8lwgNowun3f7QJw4S7FhtwxR0"
+- name: rabbitmq-haproxy-partition-e4fffe2eeec37a9cd821
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: latest
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_V2
+    ephemeral_disk:
+      size: 4096
+  env:
+    bosh:
+      password: "$6$41709f22bf31235d$IKKWnvWgs2TETBRoL.XORD.yFJ6O5itFoQAKlkANAvnnALMHBCDh4TFoxL2e1fEm14xfb2MJ4sCZRthqmqbBA1"
+- name: rabbitmq-broker-partition-e4fffe2eeec37a9cd821
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: latest
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1
+    ephemeral_disk:
+      size: 4096
+  env:
+    bosh:
+      password: "$6$c7118012cfadcef6$BGbR12BGNnuQ0Uv48cYVAckeIaWrpo.HARZRBW34KOemklaDgKEBDtOhwMBe39BwSIaw44EuggezLxbIYAoWz/"
+- name: broker-registrar
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: latest
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1
+    ephemeral_disk:
+      size: 2048
+  env:
+    bosh:
+      password: "$6$ed1fc06551234b15$9ekcgjzH72RcoS8C9QwsHpO5UxsLaatydtZ3DKOnMInPkNf7z8OB2MXlOPYcVSWK/4TF/kkx8wdUm8iQEExPv0"
+- name: broker-deregistrar
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: latest
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1
+    ephemeral_disk:
+      size: 2048
+  env:
+    bosh:
+      password: "$6$260ef4f485ffd96a$OYrfSakgcFKlkJBesasG41BM38GxcA3O5APmFlmpYBnpBT9pAwSsyLqOU.uNr6S02qSffF1Tq5ozROot0bYms/"
+compilation:
+  reuse_compilation_vms: true
+  workers: 2
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_V2
+    ephemeral_disk:
+      size: 4096
+update:
+  canaries: 1
+  canary_watch_time: 30000-600000
+  update_watch_time: 30000-600000
+  max_in_flight: 1
+  max_errors: 2
+  serial: true
+jobs:
+- name: rabbitmq-server-partition-e4fffe2eeec37a9cd821
+  templates:
+  - name: rabbitmq-server
+    release: cf-rabbitmq
+  lifecycle: service
+  instances: 2
+  resource_pool: rabbitmq-server-partition-e4fffe2eeec37a9cd821
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+    static_ips:
+    - 10.0.16.20
+    - 10.0.16.128
+  properties:
+    syslog_aggregator:
+      address: 
+      port: 
+    rabbitmq-server:
+      networks:
+        apps: default
+      static_ips:
+      - 10.0.16.20
+      - 10.0.16.128
+      administrators:
+        management:
+          username: admin
+          password: r4bb1t_azure
+        broker:
+          username: broker
+          password: f381cd951c4e33e7
+      plugins:
+      - rabbitmq_management
+      ssl:
+        security_options: 
+        key: 
+        cert: 
+        cacert: 
+      config: 
+      cookie: 
+  update:
+    max_in_flight: 2
+    serial: false
+  persistent_disk_pool: rabbitmq-server-partition-e4fffe2eeec37a9cd821
+- name: rabbitmq-haproxy-partition-e4fffe2eeec37a9cd821
+  templates:
+  - name: rabbitmq-haproxy
+    release: cf-rabbitmq
+  lifecycle: service
+  instances: 1
+  resource_pool: rabbitmq-haproxy-partition-e4fffe2eeec37a9cd821
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+    static_ips:
+    - 10.0.16.23
+  properties:
+    rabbitmq-haproxy:
+      stats:
+        username: admin
+        password: b4218755190a1b32
+      networks:
+        apps: default
+      server_ips:
+      - 10.0.16.20
+      - 10.0.16.128
+      ports: 15672, 5672, 5671, 1883, 8883, 61613, 61614, 15674
+  update:
+    max_in_flight: 1
+    serial: false
+- name: rabbitmq-broker-partition-e4fffe2eeec37a9cd821
+  templates:
+  - name: rabbitmq-broker
+    release: cf-rabbitmq
+  lifecycle: service
+  instances: 1
+  resource_pool: rabbitmq-broker-partition-e4fffe2eeec37a9cd821
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+    static_ips:
+    - 10.0.16.64
+  properties:
+    rabbitmq-broker:
+      route: pivotal-rabbitmq-broker
+      ip: 10.0.16.64
+      networks:
+        apps: default
+      cc_endpoint: https://api.pcfazure.com
+      cc_api_version: v2
+      uaa_endpoint: https://uaa.pcfazure.com
+      uaa_client:
+        client_id: cf
+        username: system_services
+        password: f8ccef5f55465d181653
+      rabbitmq:
+        operator_set_policy:
+          enabled: true
+          policy_name: operator_set_policy
+          policy_definition: |
+            {"ha-mode": "exactly", "ha-params": 2, "ha-sync-mode": "automatic"}
+          policy_priority: 50
+        management_domain: pivotal-rabbitmq.pcfazure.com
+        management_ip: 10.0.16.23
+        hosts:
+        - 10.0.16.23
+        dns_host: 
+        administrator:
+          username: broker
+          password: f381cd951c4e33e7
+        ssl: 
+      service:
+        url: 10.0.16.64
+        username: admin
+        password: ec90a1f5d8df4b772094
+      logging:
+        level: info
+        print_stack_traces: true
+    cf:
+      domain: pcfazure.com
+      nats:
+        host: 10.0.16.11
+        port: 4222
+        username: nats
+        password: c5a6123f98a1e5c27148
+  update:
+    max_in_flight: 1
+    serial: false
+- name: broker-registrar
+  templates:
+  - name: broker-registrar
+    release: cf-rabbitmq
+  lifecycle: errand
+  instances: 1
+  resource_pool: broker-registrar
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+  properties:
+    broker:
+      name: p-rabbitmq
+      host: pivotal-rabbitmq-broker.pcfazure.com
+      username: admin
+      password: ec90a1f5d8df4b772094
+    cf:
+      api_url: https://api.pcfazure.com
+      admin_username: system_services
+      admin_password: f8ccef5f55465d181653
+  update:
+    max_in_flight: 1
+- name: broker-deregistrar
+  templates:
+  - name: broker-deregistrar
+    release: cf-rabbitmq
+  lifecycle: errand
+  instances: 1
+  resource_pool: broker-deregistrar
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+  properties:
+    broker:
+      name: p-rabbitmq
+      host: pivotal-rabbitmq-broker.pcfazure.com
+      username: admin
+      password: ec90a1f5d8df4b772094
+    cf:
+      api_url: https://api.pcfazure.com
+      admin_username: system_services
+      admin_password: f8ccef5f55465d181653
+  update:
+    max_in_flight: 1
+disk_pools:
+- name: rabbitmq-server-partition-e4fffe2eeec37a9cd821
+  disk_size: 8192

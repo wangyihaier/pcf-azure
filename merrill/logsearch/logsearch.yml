@@ -1,0 +1,343 @@
+compilation:
+  cloud_properties:
+    instance_type: Standard_D1_v2
+  network: default
+  reuse_compilation_vms: true
+  workers: 4
+director_uuid: 084ab4fd-7adc-4c8d-8bbe-61ec4a0e5abd
+disk_pools:
+- disk_size: 50000
+  name: elasticsearch_master
+- disk_size: 250000
+  name: elasticsearch_data
+- disk_size: 50000
+  name: queue
+jobs:
+- instances: 1
+  name: elasticsearch_master
+  networks:
+  - name: default
+    static_ips:
+    - 10.0.16.221
+  persistent_disk_pool: elasticsearch_master
+  properties:
+    elasticsearch:
+      node:
+        allow_data: false
+        allow_master: true
+  resource_pool: medium
+  templates:
+  - name: api
+    release: logsearch
+  - name: elasticsearch
+    release: logsearch
+  - name: elasticsearch_config
+    release: logsearch
+  - name: curator
+    release: logsearch
+  update:
+    serial: true
+- instances: 2
+  name: elasticsearch_data
+  networks:
+  - name: default
+  persistent_disk_pool: elasticsearch_data
+  properties:
+    elasticsearch:
+      node:
+        allow_data: true
+        allow_master: false
+  resource_pool: high_memory
+  templates:
+  - name: elasticsearch
+    release: logsearch
+- instances: 1
+  name: queue
+  networks:
+  - name: default
+    static_ips:
+    - 10.0.16.224
+  persistent_disk_pool: queue
+  resource_pool: high_memory
+  templates:
+  - name: queue
+    release: logsearch
+  update:
+    serial: true
+- instances: 1
+  name: parser
+  networks:
+  - name: default
+  resource_pool: high_cpu
+  templates:
+  - name: parser
+    release: logsearch
+- instances: 1
+  name: ingestor_syslog
+  networks:
+  - name: default
+    static_ips:
+    - 10.0.16.226
+  resource_pool: medium_with_lb
+  templates:
+  - name: ingestor_syslog
+    release: logsearch
+  - name: ingestor_relp
+    release: logsearch
+- instances: 1
+  name: ingestor_firehose
+  networks:
+  - name: default
+  resource_pool: medium
+  templates:
+  - name: ingestor_cloudfoundry-firehose
+    release: logsearch-for-cloudfoundry
+- instances: 1
+  lifecycle: errand
+  name: push-kibana
+  networks:
+  - name: default
+  resource_pool: tiny
+  templates:
+  - name: push-kibana
+    release: logsearch-for-cloudfoundry
+meta:
+  ingestor_load_balancer_name: logsearch_ingestor
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: 3169
+name: logsearch-for-cloudfoundry
+networks:
+- name: default
+  subnets:
+  - cloud_properties:
+      virtual_network_name: boshvnet-crp # <--- Replace with virtual network name
+      subnet_name: CloudFoundry # <--- Replace with subnet name for cloud foundry VMs
+    dns:
+    - 8.8.8.8
+    gateway: 10.0.16.1
+    range: 10.0.16.0/24
+    reserved:
+    - 10.0.16.2-10.0.16.220
+    - 10.0.16.231
+    - 10.0.16.240-10.0.16.254
+    static:
+    - 10.0.16.221
+    - 10.0.16.222
+    - 10.0.16.223
+    - 10.0.16.224
+    - 10.0.16.225
+    - 10.0.16.226
+  type: manual
+properties:
+  cloudfoundry:
+    admin_client_secret: d8fc97513bc90aae64be
+    admin_password: a3354e5e081744fc0525
+    admin_username: admin
+    api_access_security_group: all_open
+    firehose_password: a3354e5e081744fc0525
+    firehose_port: null
+    firehose_user: admin
+    skip_ssl_validation: true
+    system_domain: sys.javelinmc.com
+  curator:
+    elasticsearch_host: 10.0.16.221
+    purge_logs:
+      retention_period: 7
+  elasticsearch:
+    admin_ip: 10.0.16.221
+    cluster_name: logsearch-for-cloudfoundry
+    discovery:
+      minimum_master_nodes: 1
+    exec: null
+    host: 10.0.16.221
+    log_level: INFO
+  elasticsearch_config:
+    templates:
+    - logsearch-for-cloudfoundry: "{\n    \"template\" : \"logstash-*\",\n    \"order\"
+        : 50,\n    \"settings\" : {\n\t\"number_of_shards\" : 5,\n\t\"number_of_replicas\"
+        : 1,\n\t\"index\" : {\n            \"search\" : {\n\t\t\"slowlog\" : {\n                    \"threshold\"
+        : {\n\t\t\t\"query\" : {\n                            \"warn\" : \"15s\",\n
+        \                           \"info\" : \"10s\",\n                            \"debug\"
+        : \"5s\",\n                            \"trace\" : \"500ms\"\n\t\t\t}\n                    }\n\t\t}\n
+        \           },\n            \"query\" : {\n\t\t\"default_field\" : \"@message\"\n
+        \           },\n            \"store\" : {\n\t\t\"compress\" : {\n                    \"stored\"
+        : true,\n                    \"tv\": true\n\t\t}\n            }\n\t}\n    },\n
+        \   \"mappings\": {\n\t\"_default_\": {\n            \"_all\": {\n\t\t\"enabled\":
+        false\n            },\n            \"_source\": {\n\t\t\"compress\": true\n
+        \           },\n            \"dynamic_templates\": [\n\t\t{\n                    \"string_template\"
+        : {\n\t\t\t\"match\" : \"*\",\n\t\t\t\"mapping\": {\n                            \"type\":
+        \"string\",\n                            \"index\": \"not_analyzed\",\n                            \"norms\"
+        : {\n\t\t\t\t\"enabled\" : false\n                            }\n\t\t\t},\n\t\t\t\"match_mapping_type\"
+        : \"string\"\n                    }\n\t\t}\n            ],\n            \"properties\"
+        : {\n\t\t\"@message\" : {\n                    \"type\" : \"string\",\n                    \"index\"
+        : \"analyzed\",\n                    \"norms\" : {\n\t\t\t\"enabled\" : false\n
+        \                   }\n\t\t},\n\t\t\"@tags\": {\n                    \"type\":
+        \"string\",\n                    \"index\" : \"not_analyzed\",\n                    \"norms\"
+        : {\n\t\t\t\"enabled\" : false\n                    }\n\t\t},\n\t\t\"@timestamp\"
+        : {\n                    \"type\" : \"date\",\n                    \"index\"
+        : \"not_analyzed\"\n\t\t},\n\t\t\"@type\" : {\n                    \"type\"
+        : \"string\",\n                    \"index\" : \"not_analyzed\",\n                    \"norms\"
+        : {\n\t\t\t\"enabled\" : false\n                    }\n\t\t},\n\t\t\"message\"
+        : {\n                    \"type\" : \"string\",\n                    \"index\"
+        : \"analyzed\",\n                    \"norms\" : {\n\t\t\t\"enabled\" : false\n
+        \                   }\n\t\t},\n\t\t\"geoip\" : {\n                    \"properties\"
+        : {\n\t\t\t\"location\" : {\n\t\t\t    \"type\" : \"geo_point\"\n\t\t\t}\n\t\t
+        \   }\n\t\t}\n            }\n\t}\n    }\n}\n\n"
+  logstash_ingestor:
+    debug: false
+    syslog:
+      port: 5514
+  logstash_parser:
+    filters: "# Parse Cloud Foundry logs from loggregator (syslog)\n# see https://github.com/cloudfoundry/loggregator/blob/master/src/loggregator/sinks/syslogwriter/syslog_writer.go#L156\n\nif
+      [@type] in [\"syslog\", \"relp\"] and [syslog_program] == \"doppler\" {\n# Parse
+      Cloud Foundry logs from doppler (via https://github.com/SpringerPE/firehose-to-syslog)\n\njson
+      {\n    source => 'syslog_message'\n    add_tag => [ 'cloudfoundry_doppler' ]
+      #This is only added if json parsing is successful\n}\n\nif \"_jsonparsefailure\"
+      in [tags] {\n    \n    # Amend the failure tag to match our fail/${addon}/${filter}/${detail}
+      standard \n    mutate {\n        add_tag => [\"fail/cloudfoundry/doppler/jsonparsefailure_of_syslog_message\"]\n
+      \       remove_tag => [\"_jsonparsefailure\"]\n    }\n\n} else {\n\n    date
+      {\n        match => [ \"time\", \"ISO8601\" ]\n    }\n\n    # Replace the unicode
+      newline character \\u2028 with \\n, which Kibana will display as a new line.
+      \ Seems that passing a string with an actual newline in it is the only way to
+      make gsub work\n    mutate {\n      gsub => [ \"msg\", '\\u2028', \"\n\"\n      ]\n
+      \   }\n\n    if ('RTR' in [source_type]) {\n        grok { \n            #cf-release
+      > v205 - includes RequestBytesReceived\n            match => { 'msg' => '%{HOSTNAME:hostname}
+      - \\[(?<time>%{MONTHDAY}/%{MONTHNUM}/%{YEAR}:%{TIME} %{INT})\\] \\\"%{WORD:verb}
+      %{URIPATHPARAM:path} %{PROG:http_spec}\\\" %{BASE10NUM:status:int} %{BASE10NUM:request_bytes_received:int}
+      %{BASE10NUM:body_bytes_sent:int} \\\"%{GREEDYDATA:referer}\\\" \\\"%{GREEDYDATA:http_user_agent}\\\"
+      %{HOSTPORT} x_forwarded_for:\\\"%{GREEDYDATA:x_forwarded_for}\\\" vcap_request_id:%{NOTSPACE:vcap_request_id}
+      response_time:%{NUMBER:response_time:float} app_id:%{NOTSPACE}' }\n            \n
+      \           #cf-release <= v205  \n\t    match => { 'msg' => '%{HOSTNAME:hostname}
+      - \\[(?<time>%{MONTHDAY}/%{MONTHNUM}/%{YEAR}:%{TIME} %{INT})\\] \\\"%{WORD:verb}
+      %{URIPATHPARAM:path} %{PROG:http_spec}\\\" %{BASE10NUM:status:int} %{BASE10NUM:body_bytes_sent:int}
+      \\\"%{GREEDYDATA:referer}\\\" \\\"%{GREEDYDATA:http_user_agent}\\\" %{HOSTPORT}
+      x_forwarded_for:\\\"%{GREEDYDATA:x_forwarded_for}\\\" vcap_request_id:%{NOTSPACE:vcap_request_id}
+      response_time:%{NUMBER:response_time:float} app_id:%{NOTSPACE}' }\n\t    overwrite
+      => [ \"time\" ]\n\t    tag_on_failure => [ 'fail/cloudfoundry/doppler/RTR' ]\n
+      \       }\n\n        if !(\"fail/cloudfoundry/doppler/RTR\" in [tags]) {\n            date
+      {\n                match => [ \"time\", \"dd/MM/y:HH:mm:ss Z\" ]\n            }\n
+      \           if [x_forwarded_for] {\n                mutate {\n                    gsub
+      => [\"x_forwarded_for\",\"[\\s\\\\\"]\",\"\"] # remove quotes and whitespace\n
+      \                   split => [\"x_forwarded_for\", \",\"] # format is client,
+      proxy1, proxy2 ...\n                }\n\n               mutate {\n                  add_field
+      => [\"remote_addr\", \"%{x_forwarded_for[0]}\"]\n               }\n                            \n
+      \              geoip {\n                 source => \"remote_addr\"\n               }\n
+      \           }\n\n            mutate {\n                remove => [ \"msg\" ]\n
+      \           }\n        }\n    }\n\n    #Ensure that we always have an event_type,
+      in prep for adding metrics\n    if ![event_type] {\n        mutate {\n            add_field
+      => [ \"event_type\", \"LogMessage\" ]\n        }\n    }\n\n    mutate {\n        remove_field
+      => \"@type\"\n    }\n\n    mutate {\n        add_field => [ \"@type\", \"cloudfoundry_doppler\"
+      ]\n        rename => [ \"syslog_message\", \"@message\" ]\n        remove_field
+      => \"time\"\n        remove_field => \"syslog_severity_code\"\n        remove_field
+      => \"syslog_facility_code\"\n        remove_field => \"syslog_facility\"\n        remove_field
+      => \"syslog_severity\"\n        remove_field => \"syslog_pri\"\n        remove_field
+      => \"syslog_program\"\n        remove_field => \"syslog_pid\"\n    }\n}\n\n\n
+      \   \n\n} else if [@type] in [\"syslog\", \"relp\"] and [@source.host] == \"loggregator\"
+      {\n# Parse Cloud Foundry logs from loggregator (syslog)\n# see https://github.com/cloudfoundry/loggregator/blob/master/src/loggregator/sinks/syslogwriter/syslog_writer.go#L156\n\nmutate
+      {\n    add_field => [ \"tmp_syslog_procid\" ,\"%{syslog_procid}\" ]\n}\n\n#
+      [App/0] => [App, 0]\nmutate {\n    gsub => [ \"tmp_syslog_procid\", \"[\\[\\]]\",
+      \"\" ]\n    split => [ \"tmp_syslog_procid\", \"/\" ]\n    add_field => [ \"source_type\"
+      ,\"%{[tmp_syslog_procid][0]}\"  ]\n    add_field => [ \"source_instance\" ,\"%{[tmp_syslog_procid][1]}\"
+      \ ]\n    remove_field => [ \"tmp_syslog_procid\" ]\n}\n\n# For source types
+      with no instance number, remove the field\nif [source_instance] == \"%{[tmp_syslog_procid][1]}\"
+      {\n    mutate {\n      remove_field => [ \"source_instance\" ]\n    }\n}\n\n#If
+      it looks like JSON, it must be JSON...\nif [syslog_message] =~ /^\\s*{\".*}\\s*$/
+      {\n    json {\n        source => \"syslog_message\"\n    }\n     # @todo seems
+      like some messages have @timestamp in them? seems ci-specific\n    date {\n
+      \       match => [ \"@timestamp\", \"ISO8601\" ]\n    }\n} else {\n    mutate
+      {\n        add_field => [ \"message\", \"%{syslog_message}\" ]\n    }\n    if
+      [message] == \"-\" {\n        mutate {\n            remove_field => \"message\"\n
+      \       }\n    }\n}\n mutate {\n    rename => [ \"syslog_program\", \"@source.app_id\"
+      ]\n}\n mutate {\n    add_tag => \"cloudfoundry_loggregator\"\n    remove_field
+      => \"syslog_facility\"\n    remove_field => \"syslog_facility_code\"\n    remove_field
+      => \"syslog_message\"\n    remove_field => \"syslog_severity\"\n    remove_field
+      => \"syslog_severity_code\"\n    remove_field => \"syslog5424_ver\"\n    remove_field
+      => \"syslog6587_msglen\"\n}\n\n} else if [@type] in [\"syslog\", \"relp\"] and
+      [syslog_program] =~ /vcap\\..*/ {\n# Parse Cloud Foundry logs from syslog_aggregator\n\ngrok
+      {\n    match => { \"syslog_message\" => \"(?:\\[job=%{NOTSPACE:@job.name}|-)
+      +(?:index=%{NOTSPACE:@job.index}\\]|-) %{GREEDYDATA:_message_json}\" }\n    tag_on_failure
+      => [\n        \"_grokparsefailure-cf-vcap\"\n    ]\n}\n\nif !(\"_grokparsefailure-cf-vcap\"
+      in [tags]) {\n    kv {\n        source => \"msgdata\"\n        field_split =>
+      \" \"\n        target => \"msgdata\"\n    }\n\n    json {\n        source =>
+      \"_message_json\"\n        remove_field => \"_message_json\"\n    }\n\n    mutate
+      {\n        rename => [ \"syslog_program\", \"@shipper.name\" ]\n        replace
+      => [ \"@job.host\", \"%{@source.host}\" ]\n        gsub => [\n            \"@shipper.name\",
+      \"\\.\", \"_\",\n            \"@job.name\", \"\\.\", \"_\"\n          ]\n    }\n\n
+      \   if [source] == \"NatsStreamForwarder\" {\n        json {\n            source
+      => \"[data][nats_message]\"\n            target => \"nats_message\"\n        }\n\n
+      \       mutate {\n            remove_field => \"[data][nats_message]\"\n        }\n
+      \   }\n\n    mutate {\n        add_tag => \"cloudfoundry_vcap\"\n        replace
+      => [ \"@shipper.priority\", \"%{syslog_pri}\" ]\n        replace => [ \"@shipper.name\",
+      \"%{@shipper.name}_%{@type}\" ]\n        replace => [ \"@type\", \"%{@type}_cf\"
+      ]\n    }\n\n    mutate {\n        remove_field => \"syslog_facility\"\n        remove_field
+      => \"syslog_facility_code\"\n        remove_field => \"syslog_message\"\n        remove_field
+      => \"syslog_severity\"\n        remove_field => \"syslog_severity_code\"\n    }\n}\n\n}\n"
+  push-kibana:
+    app_name: logs
+    oauth2_client_id: logsearch-for-cloudfoundry
+    oauth2_client_secret: 39qNwjWoC6mFkfGTfKygPfTf9rArlStY
+  redis:
+    host: 10.0.16.224
+releases:
+- name: logsearch
+  version: 23.0.0
+- name: logsearch-for-cloudfoundry
+  version: 7
+resource_pools:
+- cloud_properties:
+    instance_type: Standard_D1_v2
+  env:
+    bosh:
+      password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
+  name: tiny
+  network: default
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: 3169
+- cloud_properties:
+    instance_type: Standard_D1_v2
+  env:
+    bosh:
+      password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
+  name: medium
+  network: default
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: 3169
+- cloud_properties:
+    instance_type: Standard_D3_v2
+  env:
+    bosh:
+      password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
+  name: high_cpu
+  network: default
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: 3169
+- cloud_properties:
+    instance_type: Standard_D4_v2
+  env:
+    bosh:
+      password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
+  name: high_memory
+  network: default
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: 3169
+- cloud_properties:
+    availability_set: logsearch_ingestor
+    instance_type: Standard_D1_v2
+#    load_balancer: logsearch_ingestor
+  name: medium_with_lb
+  network: default
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: 3169
+update:
+  canaries: 1
+  canary_watch_time: 30000-600000
+  max_errors: 1
+  max_in_flight: 1
+  serial: true
+  update_watch_time: 5000-600000

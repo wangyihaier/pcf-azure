@@ -1,0 +1,167 @@
+---
+name: cf-redis
+director_uuid: 084ab4fd-7adc-4c8d-8bbe-61ec4a0e5abd
+
+releases:
+- name: cf-redis
+  version: latest
+
+compilation:
+  workers: 4
+  network: default
+  reuse_compilation_vms: true
+  cloud_properties:
+    instance_type: Standard_D1_v2
+    storage_account_name: merrillredisstore
+    storage_access_key: RzCRmDYRMZBNbGygRXZvKT8/adJuGwtggtIMatFiHIgjy10M9CHnax1KfnTyIYwave2KgEiETZQt3mz7kemtjw==
+
+update:
+  canaries: 1
+  canary_watch_time: 30000-180000
+  update_watch_time: 30000-180000
+  max_in_flight: 4
+  serial: true
+
+networks:
+- name: default
+  subnets:
+  - range: 10.0.16.0/20
+    gateway: 10.0.16.1
+    reserved:
+    - 10.0.16.2-10.0.16.71
+    - 10.0.16.96-10.0.16.254
+    static:
+    - 10.0.16.95
+    - 10.0.16.73
+    - 10.0.16.74
+    - 10.0.16.75
+    - 10.0.16.76
+    - 10.0.16.77
+    dns:
+    - 172.30.54.9
+    - 172.30.94.9
+    - 8.8.8.8
+    cloud_properties:
+      virtual_network_name: boshvnet-crp # <--- Replace with virtual network name
+      subnet_name: CloudFoundry # <--- Replace with subnet name for cloud foundry VMs
+
+resource_pools:
+- name: services-small
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_v2
+    storage_account_name: merrillredisstore
+    storage_access_key: RzCRmDYRMZBNbGygRXZvKT8/adJuGwtggtIMatFiHIgjy10M9CHnax1KfnTyIYwave2KgEiETZQt3mz7kemtjw==
+
+- name: services-large
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D11_v2
+
+jobs:
+  - name: cf-redis-broker
+    templates:
+    - name: cf-redis-broker
+      release: cf-redis
+    - name: syslog-configurator
+      release: cf-redis
+    instances: 1
+    resource_pool: services-small
+    persistent_disk: 4096
+    networks:
+    - name: default
+      static_ips:
+      - 10.0.16.95
+    properties:
+      syslog_aggregator:
+        address:
+        port:
+
+  - name: dedicated-node
+    templates:
+    - name: dedicated-node
+      release: cf-redis
+    - name: syslog-configurator
+      release: cf-redis
+    instances: 5
+    resource_pool: services-small
+    persistent_disk: 20480
+    networks:
+    - name: default
+      static_ips:
+      - 10.0.16.73
+      - 10.0.16.74
+      - 10.0.16.75
+      - 10.0.16.76
+      - 10.0.16.77
+    properties:
+      syslog_aggregator:
+        address:
+        port:
+
+  - name: broker-registrar
+    instances: 1
+    lifecycle: errand
+    networks:
+    - name: default
+    resource_pool: services-small
+    templates:
+    - name: broker-registrar
+      release: cf-redis
+
+  - name: broker-deregistrar
+    instances: 1
+    lifecycle: errand
+    networks:
+    - name: default
+    resource_pool: services-small
+    templates:
+    - name: broker-deregistrar
+      release: cf-redis
+
+properties:
+  broker:
+    service_name: p-redis
+    name: redis
+    host: redis-broker.apps.javelinmc.com
+    username: admin
+    password: redisc1oudc0w
+  #syslog_aggregator:
+  #  address: REPLACE_WITH_SYSLOG_AGGREGATOR_HOST
+  #  port: REPLACE_WITH_SYSLOG_AGGREGATOR_PORT
+  cf:
+    api_url: https://api.sys.javelinmc.com
+    apps_domain: apps.javelinmc.com
+    admin_username: admin
+    admin_password: a3354e5e081744fc0525
+    nats:
+      host: 10.0.16.6
+      username: nats
+      password: a79ffab7e326047f84cb
+      port: 4222
+      machines:
+      - 10.0.16.6
+      - 10.0.16.41
+  redis:
+    host: 10.0.16.95 # REPLACE_WITH redis-broker.<CF_APP_DOMAIN>
+    broker:
+      service_name: p-redis
+      backend_host: 10.0.16.95 # REPLACE_WITH redis-broker.<CF_APP_DOMAIN>
+      network: default
+      service_instance_limit: 0
+      dedicated_nodes:
+      - 10.0.16.73
+      - 10.0.16.74
+      - 10.0.16.75
+      - 10.0.16.76
+      - 10.0.16.77
+      auth:
+        username: admin
+        password: redisc1oudc0w
+    config_command: "config"

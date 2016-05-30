@@ -1,0 +1,207 @@
+---
+name: p-spring-cloud-services-8a4093fc1f47bf2f89dd
+director_uuid: 084ab4fd-7adc-4c8d-8bbe-61ec4a0e5abd
+releases:
+- name: spring-cloud-broker
+  version: 1.0.4-build.12
+networks:
+- name: default
+  subnets:
+  - range: 10.0.16.0/24
+    gateway: 10.0.16.1
+    dns:
+    - 8.8.8.8
+    static: []
+    reserved:
+    - 10.0.16.2-10.0.16.210
+    - 10.0.16.221-10.0.16.254
+    cloud_properties:
+      virtual_network_name: boshvnet-crp # <--- Replace with virtual network name
+      subnet_name: CloudFoundry # <--- Replace with subnet name for cloud foundry VMs
+resource_pools:
+- name: deploy-service-broker
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_v2
+    storage_account_name: merrillscsstore
+    storage_access_key: IJEsffq5pT7wS1WpXqomFwPbGIqsRfs/lMP0G63DSYUZ+bzkfCabHd1Sz6uD6GcOEDTeTrfBIiuIJ7WHf8IgXA==
+  env:
+    bosh:
+      password: "$6$6cd951e0ce15a6f1$zgemV3NRrQplAVYNZeEF0InhImRuyCK7.jeaauR/T0PzxZDpzrJbMeAF8mk0bu3QmfmLRpC9Kf9whA/mnV1Fa0"
+- name: register-service-broker
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_v2
+    storage_account_name: merrillscsstore
+    storage_access_key: IJEsffq5pT7wS1WpXqomFwPbGIqsRfs/lMP0G63DSYUZ+bzkfCabHd1Sz6uD6GcOEDTeTrfBIiuIJ7WHf8IgXA==
+  env:
+    bosh:
+      password: "$6$a9837dd2926002b0$TQkFnRq79V1DdRA/IoRtCWB9m8N5A.dYJyhapIjglt7wGds92xv8EOk5jCoEyl8gtNK81Ce9jBTVbN5cQsuq6."
+- name: destroy-service-broker
+  stemcell:
+    name: bosh-azure-hyperv-ubuntu-trusty-go_agent
+    version: '3169'
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_v2
+    storage_account_name: merrillscsstore
+    storage_access_key: IJEsffq5pT7wS1WpXqomFwPbGIqsRfs/lMP0G63DSYUZ+bzkfCabHd1Sz6uD6GcOEDTeTrfBIiuIJ7WHf8IgXA==
+  env:
+    bosh:
+      password: "$6$724ff751b2883923$3S.XsKuXTXnjH/MTe4COBCvLe0rd6F9m0g5y0MOpAIbEmGzL4z6H.rpran7skFg2k.G6XzIfqE4QEp9qefHYR0"
+compilation:
+  reuse_compilation_vms: true
+  workers: 4
+  network: default
+  cloud_properties:
+    instance_type: Standard_D1_v2
+    storage_account_name: merrillscsstore
+    storage_access_key: IJEsffq5pT7wS1WpXqomFwPbGIqsRfs/lMP0G63DSYUZ+bzkfCabHd1Sz6uD6GcOEDTeTrfBIiuIJ7WHf8IgXA==
+update:
+  canaries: 1
+  canary_watch_time: 30000-300000
+  update_watch_time: 30000-300000
+  max_in_flight: 1
+  max_errors: 2
+  serial: true
+jobs:
+- name: deploy-service-broker
+  templates:
+  - name: deploy-service-broker
+    release: spring-cloud-broker
+  lifecycle: errand
+  instances: 1
+  resource_pool: deploy-service-broker
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+  properties:
+    domain: sys.javelinmc.com
+    app_domains:
+    - apps.javelinmc.com
+    ssl:
+      skip_cert_verify: true
+    spring_cloud_broker:
+      product_name:
+      app_name:
+      app_uri:
+      broker:
+        org_name:
+        space_name:
+        user: bfa374b29363283accbc
+        password: a17954b3e57d71e35db6
+        max_instances: 100
+      worker:
+        client_id:
+        client_secret: d5be2c0bc5277c1be49c
+        user: admin
+        password: f2e7b94d6e26662eafc6
+      instances:
+        org_name:
+        space_name:
+        instances_user: p-spring-cloud-services
+        instances_password: d1999aeef10a0d059168
+      app_push:
+        timeout: 180
+        memory: 2048
+      broker_dashboard_secret: c65a3e5730e4848f1d1f
+      persistence_store_type:
+      encryption_key: dc822b70456b2db21d3b
+      cf:
+        admin_user: admin	#CF admin user
+        admin_password: a3354e5e081744fc0525  #CF Admin user password
+      uaa:
+        admin_client_id: admin   #### this relates to properties.uaa.admin.client_secret and the user is always admin
+        admin_client_secret: d8fc97513bc90aae64be
+  update:
+    max_in_flight: 1
+- name: register-service-broker
+  templates:
+  - name: register-service-broker
+    release: spring-cloud-broker
+  lifecycle: errand
+  instances: 1
+  resource_pool: register-service-broker
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+  properties:
+    domain: sys.javelinmc.com
+    app_domains:
+    - apps.javelinmc.com
+    ssl:
+      skip_cert_verify: true
+    spring_cloud_broker:
+      product_name:
+      broker:
+        org_name:
+        space_name:
+        user: bfa374b29363283accbc
+        password: a17954b3e57d71e35db6
+        plan_names:
+      app_name:
+      app_uri:
+      encryption_key: dc822b70456b2db21d3b
+      cf:
+        admin_user: admin
+        admin_password: a3354e5e081744fc0525
+      uaa:
+        admin_client_id: admin
+        admin_client_secret: d8fc97513bc90aae64be
+  update:
+    max_in_flight: 1
+- name: destroy-service-broker
+  templates:
+  - name: destroy-service-broker
+    release: spring-cloud-broker
+  lifecycle: errand
+  instances: 1
+  resource_pool: destroy-service-broker
+  networks:
+  - name: default
+    default:
+    - dns
+    - gateway
+  properties:
+    domain: sys.javelinmc.com
+    app_domains:
+    - apps.javelinmc.com
+    ssl:
+      skip_cert_verify: true
+    spring_cloud_broker:
+      product_name:
+      broker:
+        org_name:
+        space_name:
+        user: bfa374b29363283accbc
+        password: a17954b3e57d71e35db6
+        plan_names:
+      worker:
+        client_id:
+        client_secret: ac378558ea50f29f9092
+      instances:
+        org_name:
+        space_name:
+        instances_user: p-spring-cloud-services
+      app_name:
+      app_uri:
+      encryption_key: dc822b70456b2db21d3b
+      cf:
+        admin_user: admin
+        admin_password: a3354e5e081744fc0525
+      uaa:
+        admin_client_id: admin
+        admin_client_secret: d8fc97513bc90aae64be
+  update:
+    max_in_flight: 1
+disk_pools: []
